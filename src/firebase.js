@@ -4,7 +4,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } f
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIRE_BASE_API_KEY,
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: "movie-app-8e7ba.firebaseapp.com",
   projectId: "movie-app-8e7ba",
   storageBucket: "movie-app-8e7ba.firebasestorage.app",
