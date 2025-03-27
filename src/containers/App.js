@@ -5,7 +5,7 @@ import history from '../history';
 import { connect } from 'react-redux';
 import { init } from '../actions';
 import ReactGA from 'react-ga';
-
+import { BrowserRouter } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MenuMobile from './MenuMobile';
 import Discover from './Discover';
@@ -134,7 +134,7 @@ const App = ({ init, isLoading }) => {
   }
 
   return (
-    <Router history={history}>
+    <BrowserRouter basename={process.env.PUBLIC_URL}>
       <React.Fragment>
         <MainWrapper isMobile={isMobile}>
           {isMobile ? (
@@ -216,7 +216,7 @@ const App = ({ init, isLoading }) => {
           </ContentWrapper>
         </MainWrapper>
       </React.Fragment>
-    </Router>
+    </BrowserRouter>
   );
 };
 
