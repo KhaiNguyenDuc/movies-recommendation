@@ -134,7 +134,7 @@ const App = ({ init, isLoading }) => {
   }
 
   return (
-    <BrowserRouter basename={process.env.PUBLIC_URL}>
+    <Router history={history}>
       <React.Fragment>
         <MainWrapper isMobile={isMobile}>
           {isMobile ? (
@@ -216,7 +216,7 @@ const App = ({ init, isLoading }) => {
           </ContentWrapper>
         </MainWrapper>
       </React.Fragment>
-    </BrowserRouter>
+    </Router>
   );
 };
 
