@@ -24,6 +24,8 @@ import MoviesList from '../components/MoviesList';
 import Button from '../components/Button';
 import NothingSvg from '../svg/nothing.svg';
 import Loading from '../components/Loading';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const Wrapper = styled.div`
   display: flex;
@@ -296,25 +298,57 @@ const Movie = ({
   }, [match.params.id]);
 
   useEffect(() => {
-    if (movie.id) {
-      // Get ratings from localStorage
-      const storedRatings = JSON.parse(localStorage.getItem("movieRatings")) || [];
-  
-      // Find the rating for the current movie
-      const existingRating = storedRatings.find((item) => item.id === movie.id);
-  
-      if (existingRating) {
-        // If the movie has a saved rating, use it
-        setModifiedRating({
-          vote_average: existingRating.rating
-        });
-      } else {
-        // If no rating exists, set default values
-        setModifiedRating({
-          vote_average: 0
-        });
+    const fetchRatingFromFirestore = async () => {
+      if (movie.id) {
+        try {
+          // Get customerId from localStorage (get user.uuid)
+          const user = JSON.parse(localStorage.getItem("user"));
+          const customerEmail = user ? user.email : null;
+
+          if (!customerEmail) {
+            console.error("User not found in localStorage");
+            return;
+          }
+
+          // Firestore document reference for the customer's movie ratings
+          const ratingsRef = doc(db, "movieRatings", customerEmail);
+
+          // Fetch the current ratings document for the customer
+          const ratingsSnap = await getDoc(ratingsRef);
+
+          if (ratingsSnap.exists()) {
+            // Get movie ratings data
+            const ratingsData = ratingsSnap.data();
+            
+            // Find the rating for the current movie
+            const existingRating = ratingsData.movieRatings.find(
+              (item) => item.id === movie.id
+            );
+
+            if (existingRating) {
+              // If the movie has a saved rating, use it
+              setModifiedRating({
+                vote_average: existingRating.rating,
+              });
+            } else {
+              // If no rating exists for this movie, set default values
+              setModifiedRating({
+                vote_average: 0,
+              });
+            }
+          } else {
+            // If no ratings document exists for the customer, set default values
+            setModifiedRating({
+              vote_average: 0,
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching rating from Firestore:", error);
+        }
       }
-    }
+    };
+
+    fetchRatingFromFirestore();
   }, [movie.id]); // Runs only when movie.id changes
   
   // If loading
@@ -574,70 +608,101 @@ const MovieRating = ({ modifiedRating, setModifiedRating, movieId }) => {
     }
   };
 
-  const submitRating = () => {
+  const submitRating = async () => {
     if (userRating) {
-      // Get the latest ratings from localStorage
-      let ratings = JSON.parse(localStorage.getItem("movieRatings")) || [];
-
-      // Check if the movie already has a rating
-      const existingIndex = ratings.findIndex((item) => item.id === movieId);
-      if (existingIndex !== -1) {
-        ratings[existingIndex].rating = userRating; // Update existing rating
-      } else {
-        ratings.push({ id: movieId, rating: userRating }); // Add new rating
+      try {
+        // Get customerId from localStorage (get user.uuid)
+        const user = JSON.parse(localStorage.getItem("user"));
+        const customerEmail = user ? user.email : null;
+  
+        if (!customerEmail) {
+          console.error("User not found in localStorage");
+          return;
+        }
+  
+        // Firestore document reference
+        const ratingsRef = doc(db, "movieRatings", customerEmail);
+  
+        // Fetch the current ratings document for the customer
+        const ratingsSnap = await getDoc(ratingsRef);
+  
+        let updatedRatings = [];
+  
+        if (ratingsSnap.exists()) {
+          // If customer already has ratings, update it
+          const ratingsData = ratingsSnap.data();
+          
+          // Check if the movie already has a rating
+          const existingIndex = ratingsData.movieRatings.findIndex(
+            (item) => item.id === movieId
+          );
+  
+          if (existingIndex !== -1) {
+            // If rating exists, update the rating
+            ratingsData.movieRatings[existingIndex].rating = userRating;
+          } else {
+            // If rating does not exist, add a new entry
+            ratingsData.movieRatings.push({ id: movieId, rating: userRating });
+          }
+  
+          updatedRatings = ratingsData.movieRatings;
+        } else {
+          // If no ratings exist for the customer, create a new entry
+          updatedRatings = [{ id: movieId, rating: userRating }];
+        }
+  
+        // Save the updated ratings in Firestore
+        await setDoc(ratingsRef, { movieRatings: updatedRatings }, { merge: true });
+  
+        // Update state to reflect new ratings
+        setSavedRatings(updatedRatings);
+  
+        // Update the movie's average rating and vote count (if applicable)
+        const updatedVoteAverage = userRating;
+        const updatedVoteCount = modifiedRating.vote_count + 1;
+  
+        setModifiedRating({
+          vote_average: updatedVoteAverage,
+          vote_count: updatedVoteCount,
+        });
+  
+        console.log("Updated ratings in Firestore:", updatedRatings);
+      } catch (error) {
+        console.error("Error updating Firestore: ", error);
       }
-
-      // Save updated ratings array to localStorage
-      localStorage.setItem("movieRatings", JSON.stringify(ratings));
-
-      // Update state to reflect new saved ratings
-      setSavedRatings(ratings);
-
-      // Update the movie's average rating and vote count
-      const updatedVoteAverage = userRating
-      const updatedVoteCount = modifiedRating.vote_count + 1;
-
-      setModifiedRating({
-        vote_average: updatedVoteAverage,
-        vote_count: updatedVoteCount,
-      });
-
-      console.log("Updated ratings in localStorage:", ratings);
     }
   };
-
+  
   return (
-      <div>
+    <div>
       <h3>Rate this movie</h3>
-        {[1, 2, 3, 4, 5].map((rating) => (
-          <button
-            key={rating}
-            onClick={() => handleRatingChange(rating)}
-            style={{
-              backgroundColor: userRating === rating ? 'yellow' : 'gray',
-              padding: '0.5rem 1rem',
-              marginBottom: '3rem',
-              margin: '0.2rem',
-              cursor: 'pointer',
-            }}
-          >
-            {rating}
-          </button>
-        ))}
+      {[1, 2, 3, 4, 5].map((rating) => (
         <button
-          onClick={submitRating}
+          key={rating}
+          onClick={() => handleRatingChange(rating)}
           style={{
-            marginTop: '1rem',
+            backgroundColor: userRating === rating ? 'yellow' : 'gray',
             padding: '0.5rem 1rem',
+            marginBottom: '3rem',
+            margin: '0.2rem',
             cursor: 'pointer',
-            backgroundColor: 'green',
-            color: 'white',
           }}
         >
-          Submit Rating
+          {rating}
         </button>
-      </div>
+      ))}
+      <button
+        onClick={submitRating}
+        style={{
+          marginTop: '1rem',
+          padding: '0.5rem 1rem',
+          cursor: 'pointer',
+          backgroundColor: 'green',
+          color: 'white',
+        }}
+      >
+        Submit Rating
+      </button>
+    </div>
   );
-};
-
-
+};  
