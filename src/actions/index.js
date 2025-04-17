@@ -1,6 +1,7 @@
 import * as TYPES from './types';
 import tmdbAPI from '../api/tmdb';
 import history from '../history';
+import { getCustomRecommendations } from '../api/recommendation'; // ✅ make sure it's imported
 
 // When app inits
 export const init = () => async dispatch => {
@@ -87,11 +88,39 @@ export const getMoviesDiscover = (name, page) => async (dispatch, getState) => {
   }
   try {
     dispatch({ type: TYPES.FETCH_MOVIES_LOADING });
-    const res = await tmdbAPI.get(`/movie/${name}`, {
-      params: {
-        page,
-      },
-    });
+    let res;
+    if(name == "myrecommendation"){
+  // Get email from your Firebase user object
+      const userData = JSON.parse(localStorage.getItem("user"))
+      const userEmail = userData.email; // Assume `user` is the Firebase auth object
+
+      // Map email to user ID
+      let userId = 4; // default
+      if (userEmail === "user1@gmail.com") userId = 1;
+      else if (userEmail === "user2@gmail.com") userId = 2;
+      else if (userEmail === "user3@gmail.com") userId = 3;
+
+      // Get recommendations
+      const recommended = await getCustomRecommendations(userId, 20);
+
+      // Format response like TMDB
+      res = {
+        data: {
+          results: recommended,
+          page: 1,
+          total_pages: 1,
+          total_results: recommended.length
+        }
+      };
+
+    }else{
+
+       res = await tmdbAPI.get(`/movie/${name}`, {
+        params: {
+          page,
+        },
+      });
+    }
     await dispatch({
       type: TYPES.FETCH_MOVIES_DISCOVER,
       payload: res.data,

@@ -1,7 +1,7 @@
 import * as TYPES from '../actions/types';
 
 const INITIAL_STATE = {
-  staticCategories: ['Popular', 'Top Rated', 'Upcoming'],
+  staticCategories: ['Popular', 'Top Rated', 'Upcoming', 'MyRecommendation'],
   loading: true,
 };
 
