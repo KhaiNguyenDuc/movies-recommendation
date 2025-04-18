@@ -1,7 +1,7 @@
 import * as TYPES from './types';
 import tmdbAPI from '../api/tmdb';
 import history from '../history';
-import { getCustomRecommendations } from '../api/recommendation'; // ✅ make sure it's imported
+import { getCustomRecommendations, getDQNRecommendation } from '../api/recommendation'; // ✅ make sure it's imported
 
 // When app inits
 export const init = () => async dispatch => {
@@ -89,8 +89,7 @@ export const getMoviesDiscover = (name, page) => async (dispatch, getState) => {
   try {
     dispatch({ type: TYPES.FETCH_MOVIES_LOADING });
     let res;
-    if(name == "myrecommendation"){
-  // Get email from your Firebase user object
+    if(name == "my_recommendation"){
       const userData = JSON.parse(localStorage.getItem("user"))
       const userEmail = userData.email; // Assume `user` is the Firebase auth object
 
@@ -113,6 +112,28 @@ export const getMoviesDiscover = (name, page) => async (dispatch, getState) => {
         }
       };
 
+    }else if(name == "my_second_recommendation"){
+      const userData = JSON.parse(localStorage.getItem("user"))
+      const userEmail = userData.email; // Assume `user` is the Firebase auth object
+
+      // Map email to user ID
+      let userId = 4; // default
+      if (userEmail === "user1@gmail.com") userId = 1;
+      else if (userEmail === "user2@gmail.com") userId = 2;
+      else if (userEmail === "user3@gmail.com") userId = 3;
+
+      // Get recommendations
+      const recommended = await getDQNRecommendation(userId, 20);
+
+      // Format response like TMDB
+      res = {
+        data: {
+          results: recommended,
+          page: 1,
+          total_pages: 1,
+          total_results: recommended.length
+        }
+      };
     }else{
 
        res = await tmdbAPI.get(`/movie/${name}`, {

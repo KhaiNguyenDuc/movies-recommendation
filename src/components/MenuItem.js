@@ -45,7 +45,9 @@ const StyledItem = styled.div`
 
 function renderIcon(title) {
   switch (title) {
-    case 'MyRecommendation':
+    case 'My Recommendation':
+      return 'star';
+    case 'My Second Recommendation':
       return 'star';
     case 'Popular':
       return 'heart';
