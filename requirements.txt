@@ -9,3 +9,4 @@ lightfm
 torch
 gym
 tensorflow-datasets
+Flask

@@ -330,6 +330,7 @@ const Movie = ({
               setModifiedRating({
                 vote_average: existingRating.rating,
               });
+              
             } else {
               // If no rating exists for this movie, set default values
               setModifiedRating({
@@ -419,7 +420,7 @@ const Movie = ({
 
 <RatingsWrapper>
 
-<Rating number={modifiedRating.vote_average / 2} />
+<Rating number={modifiedRating.vote_average} />
 <RatingNumber>{modifiedRating.vote_average}</RatingNumber>
 </RatingsWrapper>
             </DetailsWrapper> 
@@ -665,7 +666,7 @@ const MovieRating = ({ modifiedRating, setModifiedRating, movieId }) => {
           vote_average: updatedVoteAverage,
           vote_count: updatedVoteCount,
         });
-  
+        localStorage.setItem("userRatings", updatedRatings)
         console.log("Updated ratings in Firestore:", updatedRatings);
       } catch (error) {
         console.error("Error updating Firestore: ", error);

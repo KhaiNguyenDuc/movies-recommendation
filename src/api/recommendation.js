@@ -1,37 +1,41 @@
 import backend from "../api/backend";
 import tmdbAPI from "../api/tmdb"; // assuming you already have this configured
 
-
-/**
- * Fetch single movie recommendation from DQN model for a given user.
- *
- * @param {number} userId
- * @returns {Promise<Object[]>} – Array of enriched TMDb movie data (empty if none)
- */
-export async function getDQNRecommendation(userId) {
+export async function getDQNRecommendation(userId, top_k = 10) {
   try {
-    const { data: rec } = await backend.get(`/dqn_recommend/${userId}`);
+    // 1) Fetch the array of recommendation objects
+    const { data: recList } = await backend.get(
+      `/recommend_2/${userId}?top_k=${top_k}`
+    );
 
-    // If the backend signals an error or there's no tmdbId, return an empty array
-    if (!rec || rec.error || !rec.tmdbId) {
-      console.warn("DQN returned no recommendation or missing TMDb ID.", rec?.error);
+    if (!Array.isArray(recList)) {
+      console.warn("DQN returned unexpected payload:", recList);
       return [];
     }
 
-    // Otherwise fetch the full details and wrap them in an array
-    const { data: tmdbMovie } = await tmdbAPI.get(`/movie/${rec.tmdbId}`);
-    return [
-      {
-        ...tmdbMovie,
-        recommendedBy: "DQN",
-      }
-    ];
+    // 2) For each recommendation, fetch the TMDb details in parallel
+    const detailPromises = recList.map(({ tmdbId }) =>
+      tmdbAPI
+        .get(`/movie/${tmdbId}`)
+        .then(({ data }) => ({ ...data, recommendedBy: "DQN" }))
+        .catch((err) => {
+          console.error(`Failed to fetch TMDb for ID ${tmdbId}:`, err);
+          return null;
+        })
+    );
 
+    // 3) Wait for all to resolve, filter out any failures
+    const detailedMovies = (await Promise.all(detailPromises)).filter(
+      Boolean
+    );
+
+    return detailedMovies;
   } catch (err) {
     console.error(`Failed to fetch DQN recommendation for user ${userId}:`, err);
     return [];
   }
 }
+
 
 /**
  * Fetch top‐N movie recommendations for a given user and enrich with TMDB data.
